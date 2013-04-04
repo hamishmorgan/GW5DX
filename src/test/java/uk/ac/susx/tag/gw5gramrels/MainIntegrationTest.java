@@ -2,29 +2,32 @@ package uk.ac.susx.tag.gw5gramrels;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.apache.log4j.Logger;
+import org.junit.*;
+import org.junit.rules.TestName;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.text.MessageFormat;
 
 /**
- * Created with IntelliJ IDEA.
- * User: hiam20
- * Date: 03/04/2013
- * Time: 13:14
- * To change this template use File | Settings | File Templates.
+ * Integrations tests for gram-relation extraction, that call the main method.
+ *
+ * @author Hamish Morgan &lt;hamish.morgan@sussex.ac.uk&gt;
  */
 public class MainIntegrationTest {
 
     /**
-     *
+     * Logger
+     */
+    private static final Logger LOG = Logger.getLogger(MainIntegrationTest.class);
+    /**
+     * All data will be written to the given directory.
      */
     private static final File OUTPUT_DIR = new File("target" + File.separator + "testout");
     /**
-     *
+     * List of input sample files
      */
     private static final String[] INPUT_FILE_NAMES = {
             "nyt_eng_201012_sample.xml.gz",
@@ -33,7 +36,10 @@ public class MainIntegrationTest {
             "apw_eng_200806_sample.xml.gz",
             "ltw_eng_200902_sample.xml.gz",
             "xin_eng_200804_sample.xml.gz",
-            "wpb_eng_201001_sample.xml.gz"};
+            "wpb_eng_201001_sample.xml.gz",
+            "ltw_eng_19971118.0013.xml"};
+    @Rule
+    public final TestName testName = new TestName();
 
     @BeforeClass
     public static void createOutputDir() throws IOException {
@@ -44,7 +50,7 @@ public class MainIntegrationTest {
             throw new IOException("Output directory already exists, but is not a directory:: " + OUTPUT_DIR);
     }
 
-    private static File asFile(URL url) {
+    private static File asFile(final URL url) {
         if (!url.getProtocol().equalsIgnoreCase("file"))
             throw new IllegalArgumentException("URL protocol must be `file`, but found `" + url.getProtocol() + "`.");
         File file = (url.getPath().startsWith("/"))
@@ -57,15 +63,16 @@ public class MainIntegrationTest {
         return file;
     }
 
+    @Before
+    public final void printTestName() {
+        LOG.info(MessageFormat.format("Running test: {0}#{1}", this.getClass().getName(), testName.getMethodName()));
+    }
+
     @Test
-    public void singleFile() throws Throwable {
+    public void testSingleFile() throws Throwable {
         final URL url = Resources.getResource(this.getClass(), "nyt_eng_201012_sample.xml.gz");
-
         Assert.assertTrue(url.getProtocol().equalsIgnoreCase("file"));
-        System.out.println("URL = " + url);
-        System.out.println("File = " + asFile(url));
-
-        File inputFile = asFile(url);
+        final File inputFile = asFile(url);
 
         File outputFile = new File(OUTPUT_DIR, inputFile.getName() + ".out");
         final String[] args = {
@@ -75,8 +82,46 @@ public class MainIntegrationTest {
         Main.main(args);
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void testNonExistantInputFile() throws Throwable {
+        final File inputFile = new File("I dont exist");
+
+        File outputFile = new File(OUTPUT_DIR, inputFile.getName() + ".out");
+        final String[] args = {
+                "--output", outputFile.toString(),
+                inputFile.toString()
+        };
+        Main.main(args);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testInputFileIsDirectory() throws Throwable {
+        final File inputFile = new File(".");
+
+        File outputFile = new File(OUTPUT_DIR, inputFile.getName() + ".out");
+        final String[] args = {
+                "--output", outputFile.toString(),
+                inputFile.toString()
+        };
+        Main.main(args);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testOutputFileIsDirectory() throws Throwable {
+        final URL url = Resources.getResource(this.getClass(), "nyt_eng_201012_sample.xml.gz");
+        Assert.assertTrue(url.getProtocol().equalsIgnoreCase("file"));
+        final File inputFile = asFile(url);
+
+        File outputFile = OUTPUT_DIR;
+        final String[] args = {
+                "--output", outputFile.toString(),
+                inputFile.toString()
+        };
+        Main.main(args);
+    }
+
     @Test
-    public void multipleFiles() throws Throwable {
+    public void testMultipleFiles() throws Throwable {
 
         final String[] inputPaths = new String[INPUT_FILE_NAMES.length];
         for (int i = 0; i < INPUT_FILE_NAMES.length; i++) {
@@ -109,14 +154,10 @@ public class MainIntegrationTest {
     @Test
     public void testMissingNERTag() throws Throwable {
         final URL url = Resources.getResource(this.getClass(), "ltw_eng_19971118.0013.xml");
-
         Assert.assertTrue(url.getProtocol().equalsIgnoreCase("file"));
-        System.out.println("URL = " + url);
-        System.out.println("File = " + asFile(url));
+        final File inputFile = asFile(url);
 
-        File inputFile = asFile(url);
-
-        File outputFile = new File(OUTPUT_DIR, inputFile.getName() + ".out");
+        final File outputFile = new File(OUTPUT_DIR, inputFile.getName() + ".out");
         final String[] args = {
                 "--output", outputFile.toString(),
                 inputFile.toString()
@@ -124,9 +165,15 @@ public class MainIntegrationTest {
         Main.main(args);
     }
 
+    /**
+     * Print the help usage and exit.
+     * <p/>
+     * Not exception should be thrown and system to exit should not be called.
+     *
+     * @throws Throwable
+     */
     @Test
     public void testPrintUsage() throws Throwable {
-        final String[] args = {"--help"};
-        Main.main(args);
+        Main.main(new String[]{"--help"});
     }
 }
