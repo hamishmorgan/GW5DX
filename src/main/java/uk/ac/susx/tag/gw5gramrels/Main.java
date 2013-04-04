@@ -107,6 +107,17 @@ public class Main {
                         inputFiles.size(), inputFiles.size() == 1 ? "" : "s"));
 
             final AgigaPrefs agigaPreferences = new AgigaPrefs();
+            // Disable NER because occasionally it's missing in GW5 , which causes an exception
+            agigaPreferences.setNer(false);
+            // Disable other things that aren't used
+            agigaPreferences.setPos(false);
+            agigaPreferences.setParse(false);
+            agigaPreferences.setNormNer(false);
+            agigaPreferences.setCoref(false);
+            agigaPreferences.setLemma(false);
+            agigaPreferences.setDeps(depForm);
+            agigaPreferences.setOffsets(false);
+
             final Writer writer = outputCloser.register(new BufferedWriter(
                     outputCloser.register(new FileWriter(outputFile))));
 
@@ -148,7 +159,9 @@ public class Main {
         sw.start();
 
         int documentCount = 0;
-        for (final AgigaDocument doc : reader) {
+
+        while (reader.hasNext()) {
+            final AgigaDocument doc = reader.next();
             ++documentCount;
 
             if (LOG.isDebugEnabled()) {

@@ -98,6 +98,32 @@ public class MainIntegrationTest {
         Main.main(args.build().toArray(new String[0]));
     }
 
+    /**
+     * GigaWord 5 annotated corpus occasionally omits the NER tag from tokens (e.g in "ltw_eng_19971118.0013".) This
+     * causes the reader to throw an unhelpful IllegalStateException. There is currently no way to recover a
+     * AgigaSentenceReader to skip the document, so the simplest solution for this use case is to disable NER tags in
+     * the prefs.
+     *
+     * @throws Throwable
+     */
+    @Test
+    public void testMissingNERTag() throws Throwable {
+        final URL url = Resources.getResource(this.getClass(), "ltw_eng_19971118.0013.xml");
+
+        Assert.assertTrue(url.getProtocol().equalsIgnoreCase("file"));
+        System.out.println("URL = " + url);
+        System.out.println("File = " + asFile(url));
+
+        File inputFile = asFile(url);
+
+        File outputFile = new File(OUTPUT_DIR, inputFile.getName() + ".out");
+        final String[] args = {
+                "--output", outputFile.toString(),
+                inputFile.toString()
+        };
+        Main.main(args);
+    }
+
     @Test
     public void testPrintUsage() throws Throwable {
         final String[] args = {"--help"};
