@@ -2,20 +2,23 @@ package uk.ac.susx.tag.gw5gramrels;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.google.common.base.Stopwatch;
 import com.google.common.io.Closer;
 import edu.jhu.agiga.*;
+import org.apache.log4j.Logger;
+import uk.ac.susx.tag.lib.MiscUtil;
 
 import java.io.*;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import static java.text.MessageFormat.format;
 
 /**
  * @author Hamish Morgan &lt;hamish.morgan@ussex.ac.uk&gt;
  * @since 25/03/2013 16:02
  */
 public class Main {
-    private static final Logger LOG = Logger.getLogger(Main.class.getName());
+    private static final Logger LOG = Logger.getLogger(Main.class);
     /**
      * List of input files to parse.
      */
@@ -59,8 +62,8 @@ public class Main {
         }
     }
 
-    public void run() throws IOException {
-
+    private static File checkOutputFile(final File outputFile)
+            throws NullPointerException, IllegalArgumentException, IOException {
         if (!outputFile.exists()) {
             if (!outputFile.createNewFile())
                 throw new IllegalArgumentException("Output file could not be created:" + outputFile);
@@ -72,49 +75,86 @@ public class Main {
             else if (!outputFile.canWrite())
                 throw new IllegalArgumentException("Output file already exists, but is not writeable:" + outputFile);
             else
-                LOG.warning("Over-writing output file: " + outputFile);
+                LOG.warn("Over-writing output file: " + outputFile);
         }
+        return outputFile;
+    }
 
-        final Closer closer = Closer.create();
+    private static File checkInputFile(final File inputFile)
+            throws NullPointerException, IllegalArgumentException {
+        if (!inputFile.exists())
+            throw new IllegalArgumentException("Input file does not exist: " + inputFile);
+        else if (inputFile.isDirectory())
+            throw new IllegalArgumentException("Input file is a directory: " + inputFile);
+        else if (!inputFile.isFile())
+            throw new IllegalArgumentException("Input file is not a regular file: " + inputFile);
+        else if (!inputFile.canRead())
+            throw new IllegalArgumentException("Input file is not readable: " + inputFile);
+
+        return inputFile;
+    }
+
+    public void run() throws IOException {
+
+        checkOutputFile(outputFile);
+        final Closer outputCloser = Closer.create();
 
         try {
+            final Stopwatch sw = new Stopwatch();
+            sw.start();
+            if (LOG.isInfoEnabled())
+                LOG.info(format("Beginning gram-relation extraction from {0} file{1}.",
+                        inputFiles.size(), inputFiles.size() == 1 ? "" : "s"));
+
             final AgigaPrefs agigaPreferences = new AgigaPrefs();
-            final Writer writer = closer.register(new BufferedWriter(
-                    closer.register(new FileWriter(outputFile))));
+            final Writer writer = outputCloser.register(new BufferedWriter(
+                    outputCloser.register(new FileWriter(outputFile))));
 
             for (final File inputFile : inputFiles) {
+                if (LOG.isInfoEnabled())
+                    LOG.info(format("Processing file `{0}`.", inputFile));
 
-                if (!inputFile.exists())
-                    throw new IllegalArgumentException("Input file does not exist: " + inputFile);
-                else if (inputFile.isDirectory())
-                    throw new IllegalArgumentException("Input file is a directory: " + inputFile);
-                else if (!inputFile.isFile())
-                    throw new IllegalArgumentException("Input file is not a regular file: " + inputFile);
-                else if (!inputFile.canRead())
-                    throw new IllegalArgumentException("Input file is not readable: " + inputFile);
+                checkInputFile(inputFile);
 
-                final StreamingDocumentReader instance = closer.register(
-                        new StreamingDocumentReader(inputFile.toString(), agigaPreferences));
+                final Closer inputCloser = Closer.create();
+                try {
+                    final StreamingDocumentReader instance = inputCloser.register(
+                            new StreamingDocumentReader(inputFile.toString(), agigaPreferences));
 
-                extractGramRels(instance, writer);
-
-                instance.close();
+                    extractGramRels(instance, writer);
+                } catch (Throwable t) {
+                    LOG.error("Rethrowing caught exception.", t);
+                    throw inputCloser.rethrow(t);
+                } finally {
+                    inputCloser.close();
+                }
             }
-        } catch (Throwable e) {
-            throw closer.rethrow(e);
+
+            sw.stop();
+            if (LOG.isInfoEnabled())
+                LOG.info(format("Completed gram-relation extraction from {0} file{1}. (Elapsed time: {2})",
+                        inputFiles.size(), inputFiles.size() == 1 ? "" : "s", sw.toString()));
+
+        } catch (Throwable t) {
+            LOG.error("Rethrowing caught exception.", t);
+            throw outputCloser.rethrow(t);
         } finally {
-            closer.close();
+            outputCloser.close();
         }
     }
 
     public void extractGramRels(final StreamingDocumentReader reader, final Writer writer) throws IOException {
+        final Stopwatch sw = new Stopwatch();
+        sw.start();
+
         int documentCount = 0;
         for (final AgigaDocument doc : reader) {
             ++documentCount;
 
-            if (LOG.isLoggable(Level.FINE))
-                LOG.log(Level.FINE, "Reading document {2}; id={0}, type={1}",
-                        new Object[]{doc.getDocId(), doc.getType(), documentCount});
+            if (LOG.isDebugEnabled()) {
+                LOG.debug(format("Reading document {2}; id={0}, type={1}",
+                        doc.getDocId(), doc.getType(), documentCount));
+            }
 
             for (AgigaSentence sent : doc.getSents()) {
                 final List<AgigaToken> tokens = sent.getTokens();
@@ -130,8 +170,14 @@ public class Main {
                 }
             }
         }
-        if (LOG.isLoggable(Level.INFO))
-            LOG.log(Level.INFO, "Number of docs: {0}", reader.getNumDocs());
+        sw.stop();
+
+        if (LOG.isInfoEnabled()) {
+            LOG.info(format("Completed processing {0} documents. (Elapsed time: {1})",
+                    reader.getNumDocs(),
+                    sw.toString()));
+            LOG.info(MiscUtil.memoryInfoString());
+        }
     }
 
 }
