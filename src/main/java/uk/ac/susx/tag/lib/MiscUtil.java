@@ -30,7 +30,10 @@
  */
 package uk.ac.susx.tag.lib;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.text.MessageFormat;
+import java.util.concurrent.TimeUnit;
 
 /**
  * <tt>MiscUtil</tt> is a static utility class for methods that don't fit
@@ -200,6 +203,7 @@ public class MiscUtil {
      *
      * @return a string containing memory info.
      */
+    @NotNull
     public static String memoryInfoString() {
         return MessageFormat.format(
                 "Memory used={0}, allocated={1}, available={2}",

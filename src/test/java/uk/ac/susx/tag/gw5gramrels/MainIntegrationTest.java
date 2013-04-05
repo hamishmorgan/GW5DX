@@ -1,8 +1,10 @@
 package uk.ac.susx.tag.gw5gramrels;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
 import org.apache.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 import org.junit.*;
 import org.junit.rules.TestName;
 
@@ -42,15 +44,22 @@ public class MainIntegrationTest {
     public final TestName testName = new TestName();
 
     @BeforeClass
-    public static void createOutputDir() throws IOException {
+    public static void createAndEmptyOutputDir() throws IOException {
+
+        if (OUTPUT_DIR.exists())
+            deleteRecursive(OUTPUT_DIR);
+
         if (!OUTPUT_DIR.exists()) {
             if (!OUTPUT_DIR.mkdirs())
                 throw new IOException("Output directory does not exist and could not be created: " + OUTPUT_DIR);
         } else if (!OUTPUT_DIR.isDirectory())
             throw new IOException("Output directory already exists, but is not a directory:: " + OUTPUT_DIR);
+
+
     }
 
-    private static File asFile(final URL url) {
+    @NotNull
+    private static File asFile(@NotNull final URL url) {
         if (!url.getProtocol().equalsIgnoreCase("file"))
             throw new IllegalArgumentException("URL protocol must be `file`, but found `" + url.getProtocol() + "`.");
         File file = (url.getPath().startsWith("/"))
@@ -61,6 +70,15 @@ public class MainIntegrationTest {
                 file = new File(file, part);
         }
         return file;
+    }
+
+    private static void deleteRecursive(File file) throws IOException {
+        Preconditions.checkNotNull(file, "file");
+        if (file.isDirectory())
+            for (File child : file.listFiles())
+                deleteRecursive(child);
+        if (file.exists() && !file.delete())
+            throw new IOException("Failed to delete file " + file);
     }
 
     @Before
@@ -104,6 +122,68 @@ public class MainIntegrationTest {
                 inputFile.toString()
         };
         Main.main(args);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testOutputNotCreatable() throws Throwable {
+        final URL url = Resources.getResource(this.getClass(), "nyt_eng_201012_sample.xml.gz");
+        Assert.assertTrue(url.getProtocol().equalsIgnoreCase("file"));
+        final File inputFile = asFile(url);
+
+        try {
+            OUTPUT_DIR.setWritable(false);
+            OUTPUT_DIR.setExecutable(false);
+            File outputFile = new File(OUTPUT_DIR, inputFile.getName() + ".out");
+            final String[] args = {
+                    "--output", outputFile.toString(),
+                    inputFile.toString()
+            };
+            Main.main(args);
+        } finally {
+            OUTPUT_DIR.setWritable(true);
+            OUTPUT_DIR.setExecutable(true);
+        }
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testOutputNotWritable() throws Throwable {
+        final URL url = Resources.getResource(this.getClass(), "nyt_eng_201012_sample.xml.gz");
+        Assert.assertTrue(url.getProtocol().equalsIgnoreCase("file"));
+        final File inputFile = asFile(url);
+        final File outputFile = new File(OUTPUT_DIR, inputFile.getName() + ".out");
+        outputFile.createNewFile();
+
+        try {
+            outputFile.setWritable(false);
+
+            final String[] args = {
+                    "--output", outputFile.toString(),
+                    inputFile.toString()
+            };
+            Main.main(args);
+        } finally {
+            outputFile.setWritable(true);
+        }
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testInputNotReadable() throws Throwable {
+        final URL url = Resources.getResource(this.getClass(), "nyt_eng_201012_sample.xml.gz");
+        Assert.assertTrue(url.getProtocol().equalsIgnoreCase("file"));
+        final File inputFile = asFile(url);
+        final File outputFile = new File(OUTPUT_DIR, inputFile.getName() + ".out");
+
+        try {
+            inputFile.setReadable(false);
+
+            final String[] args = {
+                    "--output", outputFile.toString(),
+                    inputFile.toString()
+            };
+            Main.main(args);
+        } finally {
+            inputFile.setReadable(true);
+        }
     }
 
     @Test(expected = IllegalArgumentException.class)

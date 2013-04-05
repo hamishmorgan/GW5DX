@@ -8,31 +8,37 @@ import edu.jhu.agiga.*;
 import org.apache.log4j.Logger;
 import uk.ac.susx.tag.lib.MiscUtil;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.*;
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static java.text.MessageFormat.format;
 
 /**
  * @author Hamish Morgan &lt;hamish.morgan@ussex.ac.uk&gt;
  * @since 25/03/2013 16:02
  */
-public class Main {
+public final class Main {
     private static final Logger LOG = Logger.getLogger(Main.class);
     /**
      * List of input files to parse.
      */
+    @Nullable
     @Parameter(required = true, variableArity = true, description = "FILE [FILE [ FILE [...]]]")
     private List<File> inputFiles = null;
     /**
      * Output file to write gramrels to.
      */
+    @Nullable
     @Parameter(names = {"-o", "--output"}, required = true,
             description = "Output file to write gramrels to.")
     private File outputFile = null;
     /**
      *
      */
+    @Nonnull
     @Parameter(names = {"-d", "--depForm"},
             description = "Dependency form; out of {BASIC_DEPS,COL_DEPS,COL_CCPROC_DEPS}")
     private AgigaConstants.DependencyForm depForm = AgigaConstants.DependencyForm.COL_CCPROC_DEPS;
@@ -46,13 +52,13 @@ public class Main {
     public Main() {
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(@Nonnull String[] args) throws IOException {
 
         final Main instance = new Main();
 
         final JCommander jc = new JCommander();
         jc.addObject(instance);
-        jc.setProgramName("uk/ac/susx/tag/gw5gramrels");
+        jc.setProgramName("gw5gr");
         jc.parse(args);
 
         if (instance.usageReqested) {
@@ -62,11 +68,16 @@ public class Main {
         }
     }
 
-    private static File checkOutputFile(final File outputFile)
+    @Nonnull
+    private static File checkOutputFile(@Nonnull final File outputFile)
             throws NullPointerException, IllegalArgumentException, IOException {
         if (!outputFile.exists()) {
-            if (!outputFile.createNewFile())
-                throw new IllegalArgumentException("Output file could not be created:" + outputFile);
+            try {
+                if (!outputFile.createNewFile())
+                    throw new AssertionError("Output file already exists but we just checked for that.");
+            } catch (IOException e) {
+                throw new IllegalArgumentException("Output file could not be created:" + outputFile, e);
+            }
         } else {
             if (outputFile.isDirectory())
                 throw new IllegalArgumentException("Output file already exists, but is a directory:" + outputFile);
@@ -80,7 +91,8 @@ public class Main {
         return outputFile;
     }
 
-    private static File checkInputFile(final File inputFile)
+    @Nonnull
+    private static File checkInputFile(@Nonnull final File inputFile)
             throws NullPointerException, IllegalArgumentException {
         if (!inputFile.exists())
             throw new IllegalArgumentException("Input file does not exist: " + inputFile);
@@ -96,6 +108,8 @@ public class Main {
 
     public void run() throws IOException {
 
+        checkNotNull(outputFile, "outputFile");
+        checkNotNull(inputFiles, "inputFiles");
         checkOutputFile(outputFile);
         final Closer outputCloser = Closer.create();
 
@@ -132,7 +146,7 @@ public class Main {
                     final StreamingDocumentReader instance = inputCloser.register(
                             new StreamingDocumentReader(inputFile.toString(), agigaPreferences));
 
-                    extractGramRels(instance, writer);
+                    extractGrammaticalRelations(instance, writer);
                 } catch (Throwable t) {
                     LOG.error("Rethrowing caught exception.", t);
                     throw inputCloser.rethrow(t);
@@ -154,7 +168,12 @@ public class Main {
         }
     }
 
-    public void extractGramRels(final StreamingDocumentReader reader, final Writer writer) throws IOException {
+    private void extractGrammaticalRelations(
+            @Nonnull final StreamingDocumentReader reader,
+            @Nonnull final Writer writer) throws IOException {
+        checkNotNull(reader, "reader");
+        checkNotNull(writer, "writer");
+
         final Stopwatch sw = new Stopwatch();
         sw.start();
 
