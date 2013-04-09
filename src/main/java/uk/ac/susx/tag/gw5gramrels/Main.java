@@ -12,6 +12,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.*;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.text.MessageFormat.format;
@@ -168,6 +169,16 @@ public final class Main {
         }
     }
 
+    private static final Pattern WHITESPACE_PATTERN = Pattern.compile("[\\s]+");
+    private static final int NO_GOVERNOR_ID = -1;
+    private static final String NO_GOVERNOR_STR = "<NIL>";
+    private static final String OUTPUT_FORMAT = "%s\t%s:%s%n";
+
+    private static String cleanString(final String str) {
+        checkNotNull(str, "str");
+        return WHITESPACE_PATTERN.matcher(str).replaceAll(" ").trim();
+    }
+
     private void extractGrammaticalRelations(
             @Nonnull final StreamingDocumentReader reader,
             @Nonnull final Writer writer) throws IOException {
@@ -194,11 +205,11 @@ public final class Main {
                 for (AgigaTypedDependency rel : sent.getAgigaDeps(depForm)) {
                     final int depIdx = rel.getDepIdx();
                     final int govIdx = rel.getGovIdx();
-                    final String type = rel.getType();
-                    final String dep = tokens.get(depIdx).getWord();
-                    final String gov = govIdx == -1 ? "<NIL>" : tokens.get(govIdx).getWord();
+                    final String type = cleanString(rel.getType());
+                    final String dep = cleanString(tokens.get(depIdx).getWord());
+                    final String gov = govIdx == NO_GOVERNOR_ID ? NO_GOVERNOR_STR : cleanString(tokens.get(govIdx).getWord());
 
-                    writer.write(String.format("%s\t%s:%s%n", gov, type, dep));
+                    writer.write(String.format(OUTPUT_FORMAT, gov, type, dep));
                 }
             }
         }
