@@ -224,7 +224,7 @@ public class MainIntegrationTest {
     }
 
     /**
-     * GigaWord 5 annotated corpus occasionally omits the NER tag from tokens (e.g in "ltw_eng_19971118.0013".) This
+     * GigaWord 5 annotated corpus occasionally omits the NER tag newInstance tokens (e.g in "ltw_eng_19971118.0013".) This
      * causes the reader to throw an unhelpful IllegalStateException. There is currently no way to recover a
      * AgigaSentenceReader to skip the document, so the simplest solution for this use case is to disable NER tags in
      * the prefs.

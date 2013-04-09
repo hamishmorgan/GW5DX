@@ -2,7 +2,10 @@ package uk.ac.susx.tag.gw5gramrels;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.google.common.base.CharMatcher;
+import com.google.common.base.Function;
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Closer;
 import edu.jhu.agiga.*;
 import org.apache.log4j.Logger;
@@ -11,7 +14,9 @@ import uk.ac.susx.tag.lib.MiscUtil;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.*;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -23,6 +28,22 @@ import static java.text.MessageFormat.format;
  */
 public final class Main {
     private static final Logger LOG = Logger.getLogger(Main.class);
+    private static final int ROOT_GOVERNOR_ID = -1;
+    private static final String ROOT_STRING = "<ROOT>";
+    private static final String OUTPUT_FORMAT = "%s\t%s:%s%n";
+    /**
+     * The following set contains dependency relations which can be considered indicative of a chunk.
+     * <p/>
+     * nn: Compound noun
+     * number: Compound number
+     * mwe: Multi-word-expression
+     * prt: Phrasal verb
+     */
+    private static final Set<String> CHUNK_DEPENDENCY_TYPES = ImmutableSet.of("nn", "number", "mwe", "prt");
+    /**
+     * Set of dependency types which should not be produced
+     */
+    private static final Set<String> IGNORED_DEPENDENCY_TYPES = ImmutableSet.of("root");
     /**
      * List of input files to parse.
      */
@@ -118,7 +139,7 @@ public final class Main {
             final Stopwatch sw = new Stopwatch();
             sw.start();
             if (LOG.isInfoEnabled())
-                LOG.info(format("Beginning gram-relation extraction from {0} file{1}.",
+                LOG.info(format("Beginning gram-relation extraction newInstance {0} file{1}.",
                         inputFiles.size(), inputFiles.size() == 1 ? "" : "s"));
 
             final AgigaPrefs agigaPreferences = new AgigaPrefs();
@@ -158,7 +179,7 @@ public final class Main {
 
             sw.stop();
             if (LOG.isInfoEnabled())
-                LOG.info(format("Completed gram-relation extraction from {0} file{1}. (Elapsed time: {2})",
+                LOG.info(format("Completed gram-relation extraction newInstance {0} file{1}. (Elapsed time: {2})",
                         inputFiles.size(), inputFiles.size() == 1 ? "" : "s", sw.toString()));
 
         } catch (Throwable t) {
@@ -167,16 +188,6 @@ public final class Main {
         } finally {
             outputCloser.close();
         }
-    }
-
-    private static final Pattern WHITESPACE_PATTERN = Pattern.compile("[\\s]+");
-    private static final int NO_GOVERNOR_ID = -1;
-    private static final String NO_GOVERNOR_STR = "<NIL>";
-    private static final String OUTPUT_FORMAT = "%s\t%s:%s%n";
-
-    private static String cleanString(final String str) {
-        checkNotNull(str, "str");
-        return WHITESPACE_PATTERN.matcher(str).replaceAll(" ").trim();
     }
 
     private void extractGrammaticalRelations(
@@ -200,16 +211,19 @@ public final class Main {
             }
 
             for (AgigaSentence sent : doc.getSents()) {
-                final List<AgigaToken> tokens = sent.getTokens();
+                final Chunking chunking = Chunking.newInstance(sent, depForm, CHUNK_DEPENDENCY_TYPES);
 
                 for (AgigaTypedDependency rel : sent.getAgigaDeps(depForm)) {
-                    final int depIdx = rel.getDepIdx();
-                    final int govIdx = rel.getGovIdx();
-                    final String type = cleanString(rel.getType());
-                    final String dep = cleanString(tokens.get(depIdx).getWord());
-                    final String gov = govIdx == NO_GOVERNOR_ID ? NO_GOVERNOR_STR : cleanString(tokens.get(govIdx).getWord());
+                    final String type = rel.getType();
+                    if (IGNORED_DEPENDENCY_TYPES.contains(type.toLowerCase()))
+                        continue;
+                    if (CHUNK_DEPENDENCY_TYPES.contains(type.toLowerCase()))
+                        continue;
 
-                    writer.write(String.format(OUTPUT_FORMAT, gov, type, dep));
+                    final String depString = chunking.surface(rel.getDepIdx());
+                    final String govString = chunking.surface(rel.getGovIdx());
+
+                    writer.write(String.format(OUTPUT_FORMAT, govString, type, depString));
                 }
             }
         }

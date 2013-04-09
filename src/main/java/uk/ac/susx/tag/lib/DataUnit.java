@@ -12,7 +12,7 @@ import java.util.EnumSet;
  * To change this template use File | Settings | File Templates.
  * <p/>
  * <p/>
- * TODO: valueOf from names and abbreviation
+ * TODO: valueOf newInstance names and abbreviation
  * TODO: floating point approximations of results
  */
 public enum DataUnit {

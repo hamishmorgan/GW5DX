@@ -70,7 +70,7 @@ public class MiscUtil {
      * human-readable string. For example 2048 produces become "2KiB". Uses
      * non-SI (1024 base) EIC units.
      *
-     * @param bytes The number to make a human readable units string from.
+     * @param bytes The number to make a human readable units string newInstance.
      * @return human readable string representation of the number of bytes
      */
     public static String humanReadableBytes(long bytes) {
@@ -85,7 +85,7 @@ public class MiscUtil {
      * multiples of 1024 are used, the correct IEC units infix an i character.
      * For example using KiB for kilobyte instead of kB. </p>
      *
-     * @param bytes The number to make a human readable units string from.
+     * @param bytes The number to make a human readable units string newInstance.
      * @param si whether to not to use SI (1000) units, use 1024 otherwise
      * @param iec whether or not use IEC units (e.g KiB)
      * @return human readable string representation of the number of bytes
