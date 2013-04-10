@@ -4,10 +4,10 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
 import org.apache.log4j.Logger;
-import org.jetbrains.annotations.NotNull;
 import org.junit.*;
 import org.junit.rules.TestName;
 
+import javax.annotation.Nonnull;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -58,8 +58,8 @@ public class MainIntegrationTest {
 
     }
 
-    @NotNull
-    private static File asFile(@NotNull final URL url) {
+    @Nonnull
+    private static File asFile(@Nonnull final URL url) {
         if (!url.getProtocol().equalsIgnoreCase("file"))
             throw new IllegalArgumentException("URL protocol must be `file`, but found `" + url.getProtocol() + "`.");
         File file = (url.getPath().startsWith("/"))

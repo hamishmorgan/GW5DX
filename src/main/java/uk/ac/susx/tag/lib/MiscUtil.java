@@ -30,8 +30,7 @@
  */
 package uk.ac.susx.tag.lib;
 
-import org.jetbrains.annotations.NotNull;
-
+import javax.annotation.Nonnull;
 import java.text.MessageFormat;
 import java.util.concurrent.TimeUnit;
 
@@ -203,7 +202,7 @@ public class MiscUtil {
      *
      * @return a string containing memory info.
      */
-    @NotNull
+    @Nonnull
     public static String memoryInfoString() {
         return MessageFormat.format(
                 "Memory used={0}, allocated={1}, available={2}",
