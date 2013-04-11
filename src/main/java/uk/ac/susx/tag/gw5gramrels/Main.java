@@ -179,8 +179,8 @@ public final class Main {
 
             sw.stop();
             if (LOG.isInfoEnabled())
-                LOG.info(format("Completed gram-relation extraction newInstance {0} file{1}. (Elapsed time: {2})",
-                        inputFiles.size(), inputFiles.size() == 1 ? "" : "s", sw.toString()));
+            LOG.info(format("Completed gram-relation extraction from {0} file{1}. (Elapsed time: {2})",
+                    inputFiles.size(), inputFiles.size() == 1 ? "" : "s", sw.toString()));
 
         } catch (Throwable t) {
             LOG.error("Rethrowing caught exception.", t);
